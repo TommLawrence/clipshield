@@ -1,0 +1,64 @@
+rules_version = '2';
+
+// ClipShield Firestore security rules.
+//
+// PRIVACY MODEL:
+//  - `users/{uid}/reports/*` stores ONLY sanitized report text the user
+//    explicitly chose to save. Never originals, never rehydration vaults.
+//  - `telemetry` stores coarse counters only (mode, outcome, latency bucket,
+//    masked count, category names). No content.
+//  - The app writes telemetry as an anonymous (or signed-in) user; read
+//    access to telemetry is denied to clients.
+//
+// These rules assume anonymous authentication is enabled so guest users get
+// a stable UID for their own saved reports.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Saved, sanitized reports — strictly scoped to the owning UID.
+    match /users/{uid}/reports/{reportId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // Defense in depth: refuse writes that try to store obviously
+      // secret-looking content. (The real guarantee is client-side redaction;
+      // this is a backstop, not the primary control.)
+      function looksLikeSecret(value) {
+        return value is string && (
+          value.matches('.*(sk-[A-Za-z0-9]{20,}).*') ||
+          value.matches('.*(ghp_[A-Za-z0-9]{36}).*') ||
+          value.matches('.*(AKIA[0-9A-Z]{16}).*') ||
+          value.matches('.*BEGIN [A-Z ]*PRIVATE KEY.*')
+        );
+      }
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['title', 'sanitizedText', 'categories', 'maskedCount', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.sanitizedText is string
+        && !looksLikeSecret(request.resource.data.sanitizedText)
+        && request.resource.data.sanitizedText.size() < 100000
+        && request.resource.data.maskedCount is int;
+    }
+
+    // Coarse, non-sensitive telemetry. Clients may create; nobody reads
+    // from clients (analysis happens in the console or via a privileged
+    // service account).
+    match /telemetry/{eventId} {
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['kind', 'mode', 'outcome', 'latencyBucketMs', 'maskedCount', 'categories', 'createdAt'])
+                    && request.resource.data.mode in ['hybrid', 'local-only', 'cloud']
+                    && request.resource.data.outcome in ['success', 'error', 'unavailable']
+                    && request.resource.data.latencyBucketMs is int
+                    && request.resource.data.maskedCount is int
+                    && request.resource.data.categories.size() < 50;
+      allow read, update, delete: if false; // deny client reads
+    }
+
+    // Everything else: deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

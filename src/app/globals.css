@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-obsidian-950: #08090d;
+  --color-obsidian-900: #0c0e14;
+  --color-obsidian-850: #11141c;
+  --color-obsidian-800: #171b25;
+  --color-slate-surface: #1c212e;
+  --color-slate-raised: #232937;
+  --color-edge: #2c3345;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 70% -10%, #131a2a 0%, #0a0c11 55%, #08090d 100%);
+  color: #dbe2f0;
+}
+
+::selection {
+  background: rgba(52, 211, 153, 0.28);
+}
+
+/* Thin scrollbars that match the dark workspace */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2c3345 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2c3345;
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clip-card {
+  background: linear-gradient(180deg, rgba(35, 41, 55, 0.55) 0%, rgba(23, 27, 37, 0.85) 100%);
+  border: 1px solid #2c3345;
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+}
+
+.clip-focus:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+
+@keyframes clip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.clip-pulse {
+  animation: clip-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes clip-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.clip-fade-in {
+  animation: clip-fade-in 0.25s ease-out both;
+}
